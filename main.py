@@ -17,7 +17,12 @@ Requires:
 import argparse
 import sys
 import os
+sys.stdout.reconfigure(encoding="utf-8")
+sys.stderr.reconfigure(encoding="utf-8")
+from dotenv import load_dotenv
 from orchestrator import NewsletterOrchestrator
+
+load_dotenv()
 
 
 def main():
@@ -41,13 +46,13 @@ Examples:
 
     # Validate API key
     if not os.environ.get("ANTHROPIC_API_KEY"):
-        print("\n  ✗ ANTHROPIC_API_KEY environment variable not set.")
+        print("\n  x ANTHROPIC_API_KEY environment variable not set.")
         print("    export ANTHROPIC_API_KEY=sk-ant-...")
         sys.exit(1)
 
     # Validate config exists
     if not os.path.exists(args.config):
-        print(f"\n  ✗ Config file not found: {args.config}")
+        print(f"\n  x Config file not found: {args.config}")
         sys.exit(1)
 
     # Run pipeline
@@ -64,7 +69,7 @@ Examples:
         )
         print(f"  ✓ Newsletter generated: {results['output_files']['html']}")
     except Exception as e:
-        print(f"\n  ✗ Pipeline failed: {e}")
+        print(f"\n  x Pipeline failed: {e}")
         sys.exit(1)
 
 

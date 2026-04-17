@@ -81,7 +81,7 @@ class NewsletterOrchestrator:
         results = {"month": month, "topic": topic}
 
         # ── Phase 1: Research ──────────────────────────────────────
-        print("▸ Phase 1: Research")
+        print(">> Phase 1: Research")
         self._log("Research Agent", "STARTED", f"Month: {month}, Topic: {topic or 'auto'}")
         try:
             research_brief = self.research_agent.run(
@@ -96,7 +96,7 @@ class NewsletterOrchestrator:
             raise
 
         # ── Phase 2: Write ─────────────────────────────────────────
-        print("\n▸ Phase 2: Write")
+        print("\n>> Phase 2: Write")
         self._log("Writer Agent", "STARTED")
         try:
             newsletter_draft = self.writer_agent.run(
@@ -110,7 +110,7 @@ class NewsletterOrchestrator:
             raise
 
         # ── Phase 3: Edit ──────────────────────────────────────────
-        print("\n▸ Phase 3: Edit")
+        print("\n>> Phase 3: Edit")
         self._log("Editor Agent", "STARTED")
         try:
             editor_output = self.editor_agent.run(
@@ -126,7 +126,7 @@ class NewsletterOrchestrator:
             raise
 
         # ── Phase 4: Render HTML ───────────────────────────────────
-        print("\n▸ Phase 4: Render")
+        print("\n>> Phase 4: Render")
         self._log("Renderer", "STARTED")
         try:
             html_output = self._render_html(editor_output["edited_newsletter"])
