@@ -1,0 +1,91 @@
+{
+  "month": "April 2026",
+  "topic": null,
+  "research_brief": {
+    "month_theme": "The Hidden Energy Crisis: Why 'Normal' Labs Miss the Real Problem",
+    "trends_data": {
+      "top_trending": "afternoon fatigue causes",
+      "search_volume_signal": "high",
+      "related_searches": [
+        "why am I tired in the afternoon",
+        "cortisol fatigue",
+        "functional medicine energy",
+        "hormone testing near me",
+        "optimal vs normal lab ranges"
+      ]
+    },
+    "sources_consulted": [
+      {
+        "url": "https://example.com/functional-medicine-fatigue",
+        "key_insight": "Most top-ranking articles focus on sleep hygiene — gap opportunity for hormone/metabolic angle"
+      },
+      {
+        "url": "https://example.com/cortisol-curve-testing",
+        "key_insight": "Four-point cortisol testing is trending in functional medicine but underexplained for patients"
+      }
+    ],
+    "hero_topic": {
+      "title": "Why Your Afternoon Fatigue Isn't About Sleep",
+      "angle": "Most content blames sleep — we differentiate by explaining the cortisol curve and metabolic signaling angle that standard labs miss",
+      "key_points": [
+        "Afternoon crashes are usually cortisol/metabolic, not sleep-related",
+        "Standard lab ranges mask subclinical hormone issues",
+        "Four-point cortisol testing reveals the pattern",
+        "Targeted protocols show results in 2-3 weeks"
+      ],
+      "seo_keywords": [
+        "afternoon fatigue causes not sleep",
+        "cortisol curve testing",
+        "functional medicine fatigue",
+        "why am I tired at 2pm",
+        "optimal hormone levels vs normal",
+        "concierge medicine energy testing",
+        "peptide therapy for fatigue",
+        "functional lab testing near me"
+      ]
+    },
+    "quick_tips": [
+      {"tip": "Take a 10-minute walk at 1 PM, before the crash hits", "why": "Pre-emptive movement blunts the cortisol cliff"},
+      {"tip": "Eat 30g protein at breakfast", "why": "Stabilizes blood sugar for 6-8 hours, preventing the 2 PM glucose crash"},
+      {"tip": "Track energy at 9 AM, 1 PM, 5 PM for one week", "why": "Creates a simple cortisol proxy that's more useful than most wearable data"}
+    ],
+    "myth_buster": {
+      "myth": "If my bloodwork is 'normal,' my hormones are fine",
+      "reality": "Standard ranges include unhealthy populations. Optimal is a different target — TSH of 4.0 is 'normal' but most people feel better at 1.5-2.0",
+      "source_hint": "Functional medicine literature on optimal vs. reference ranges"
+    },
+    "practice_spotlight_suggestion": "Announce addition of four-point cortisol curve testing to initial workup",
+    "cta_suggestion": "Book a functional energy assessment"
+  },
+  "editor_output": {
+    "scorecard": {
+      "brand_voice_alignment": {"score": 9, "note": "Confident, clear, educational without being preachy. Reads like a knowledgeable friend, not a textbook."},
+      "readability": {"score": 9, "note": "Short paragraphs, scannable sections. No jargon without explanation."},
+      "actionability": {"score": 8, "note": "Tips are specific and doable. Could be stronger on the myth section — add a 'what to ask your doctor' follow-up."},
+      "engagement_potential": {"score": 8, "note": "Strong hook in the hero. Subject line is curiosity-driven without being clickbait."},
+      "overall": {"score": 9, "note": "Publication-ready. Minor tightening on transitions between sections."}
+    },
+    "changes_made": [
+      "Shortened hero article from 340 to 290 words — cut a redundant paragraph about caffeine",
+      "Made tip #3 more specific — changed 'track your energy' to include the exact 1-10 scale and three time points",
+      "Strengthened the myth-buster reality section with a concrete TSH example",
+      "Tightened CTA copy — removed hedging language"
+    ],
+    "flags": [
+      "Hero article mentions 'most of our patients notice a difference within 2-3 weeks' — practice should verify this matches their actual outcomes",
+      "Consider adding a disclaimer footer for medical content if required by state regulations"
+    ]
+  },
+  "pipeline_log": [
+    {"agent": "Research Agent", "status": "STARTED", "detail": "Month: April 2026, Topic: auto"},
+    {"agent": "Research Agent", "status": "TOOL_CALL", "detail": "google_trends(['afternoon fatigue', 'cortisol testing', 'peptide therapy', 'hormone optimization'])"},
+    {"agent": "Research Agent", "status": "TOOL_CALL", "detail": "firecrawl_search('afternoon fatigue causes functional medicine')"},
+    {"agent": "Research Agent", "status": "TOOL_CALL", "detail": "firecrawl_search('cortisol curve testing patient guide')"},
+    {"agent": "Research Agent", "status": "COMPLETED", "detail": "Theme: The Hidden Energy Crisis"},
+    {"agent": "Writer Agent", "status": "STARTED"},
+    {"agent": "Writer Agent", "status": "COMPLETED", "detail": "Subject: Why Your Afternoon Fatigue Isn't About Sleep"},
+    {"agent": "Editor Agent", "status": "STARTED"},
+    {"agent": "Editor Agent", "status": "COMPLETED", "detail": "Score: 9/10"},
+    {"agent": "Renderer", "status": "COMPLETED", "detail": "Saved to examples/output/example_newsletter.html"}
+  ]
+}
