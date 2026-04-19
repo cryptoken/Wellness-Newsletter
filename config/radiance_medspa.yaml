@@ -1,0 +1,58 @@
+# Brand Voice Configuration — Radiance Aesthetics Med Spa (portability test config)
+
+practice:
+  name: "Radiance Aesthetics Med Spa"
+  type: "Luxury Medical Aesthetics Practice"
+  services:
+    - Botox and Dysport
+    - Dermal Fillers
+    - Laser Hair Removal
+    - Microneedling
+    - Chemical Peels
+    - CoolSculpting
+  audience: "Image-conscious women 25-55, maintenance-minded, repeat aesthetic clients"
+  location: "Beverly Hills, CA"
+
+voice:
+  tone:
+    - Refined and aspirational
+    - Warm and confidence-building
+    - Expert but approachable
+    - Results-focused, never hype-y
+  personality: "The aesthetic confidante — treats you like a regular at a private salon, explains the science without the clinical coldness, and never pressures you."
+  do:
+    - Speak to outcomes people actually want (glow, confidence, subtle refreshment)
+    - Explain what each treatment does and does not do
+    - Lead with before/after framing when relevant
+    - Use sensory, visual language — this is an aesthetic brand
+    - Use "you" and "your" — speak directly to the reader
+  dont:
+    - Use medical jargon without translating it
+    - Make before/after promises or guarantee results
+    - Sound transactional or discount-driven
+    - Use clickbait or fear tactics
+    - Shame the reader's appearance or aging
+
+newsletter:
+  name: "The Radiance Memo"
+  frequency: monthly
+  sections:
+    - slug: hero_topic
+      name: "In Focus"
+      description: "One in-depth treatment or aesthetic topic (~300 words). This is the anchor."
+    - slug: quick_tips
+      name: "3 Rituals for This Month"
+      description: "Three actionable at-home or in-clinic tips. 1-2 sentences each."
+    - slug: myth_buster
+      name: "Myth vs. Reality"
+      description: "One common aesthetic myth, debunked clearly."
+    - slug: practice_spotlight
+      name: "At the Studio"
+      description: "Brief update — new treatment, team news, or featured result (anonymized)."
+    - slug: cta
+      name: "Book Your Visit"
+      description: "Single clear call to action. Book a consult, reply to this email, etc."
+  style:
+    max_words: 800
+    reading_time_target: "3-4 minutes"
+    format: html_email

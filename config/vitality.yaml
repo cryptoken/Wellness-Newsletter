@@ -1,0 +1,63 @@
+# Brand Voice Configuration
+# Swap this file to adapt the system to any wellness practice
+
+practice:
+  name: "Vitality Wellness Center"
+  type: "Concierge Medical & Wellness Practice"
+  services:
+    - Hormone Replacement Therapy (HRT)
+    - Medical Weight Loss (Semaglutide, Tirzepatide)
+    - Peptide Therapy (BPC-157, CJC/Ipamorelin)
+    - IV Nutrient Therapy
+    - Functional Lab Testing
+    - Longevity & Anti-Aging Programs
+  audience: "Health-conscious adults 35-65, proactive about aging, willing to invest in premium care"
+  location: "Scottsdale, AZ"
+
+voice:
+  tone:
+    - Clear and confident
+    - Educational without being condescending
+    - Warm but professional
+    - Evidence-informed, not fear-based
+  personality: "A trusted physician friend who happens to be brilliant — explains things simply, never talks down to you, and genuinely cares about your outcomes."
+  do:
+    - Use plain language for complex medical topics
+    - Back claims with mechanism of action (briefly)
+    - Include practical takeaways the reader can act on today
+    - Write like a human, not a medical textbook
+    - Use "you" and "your" — speak directly to the reader
+  dont:
+    - Use jargon without explaining it
+    - Make absolute medical claims or guarantees
+    - Sound salesy or pushy
+    - Use clickbait or fear-mongering
+    - Write walls of text — keep sections scannable
+
+newsletter:
+  name: "The Vitality Brief"
+  wordmark: "Vitality"
+  tagline: "A monthly letter for people in it for the long run."
+  footer_tagline: "Written by the clinicians and researchers at Vitality Wellness — for people who plan to be moving well at eighty."
+  template: "templates/vitality_newsletter.html"
+  frequency: monthly
+  sections:
+    - slug: hero_topic
+      name: "Deep Dive"
+      description: "One in-depth educational topic (~300 words). This is the anchor."
+    - slug: quick_tips
+      name: "3 Things You Can Do This Week"
+      description: "Three actionable wellness tips. 1-2 sentences each."
+    - slug: myth_buster
+      name: "Myth vs. Reality"
+      description: "One common wellness myth, debunked clearly."
+    - slug: practice_spotlight
+      name: "From the Practice"
+      description: "Brief update — new service, team news, or patient win (anonymized)."
+    - slug: cta
+      name: "Your Next Step"
+      description: "Single clear call to action. Book a consult, reply to this email, etc."
+  style:
+    max_words: 800
+    reading_time_target: "3-4 minutes"
+    format: html_email

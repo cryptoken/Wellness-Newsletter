@@ -16,6 +16,7 @@ The orchestrator manages data flow, logging, and error handling.
 """
 
 import json
+import re
 import yaml
 import os
 from datetime import datetime
@@ -137,15 +138,18 @@ class NewsletterOrchestrator:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
             html_path = os.path.join(output_dir, f"newsletter_{timestamp}.html")
-            with open(html_path, "w") as f:
+            with open(html_path, "w", encoding="utf-8") as f:
                 f.write(html_output)
 
-            json_path = os.path.join(output_dir, f"pipeline_results_{timestamp}.json")
-            with open(json_path, "w") as f:
-                json.dump(results, f, indent=2, default=str)
-
-            results["output_files"] = {"html": html_path, "json": json_path}
             self._log("Renderer", "COMPLETED", f"Saved to {html_path}")
+
+            results["output_files"] = {"html": html_path}
+            results["pipeline_log"] = self.pipeline_log
+
+            json_path = os.path.join(output_dir, f"pipeline_results_{timestamp}.json")
+            with open(json_path, "w", encoding="utf-8") as f:
+                json.dump(results, f, indent=2, default=str)
+            results["output_files"]["json"] = json_path
         except Exception as e:
             self._log("Renderer", "FAILED", str(e))
             raise
@@ -160,20 +164,63 @@ class NewsletterOrchestrator:
         print(f"  Output: {html_path}")
         print(f"{'='*60}\n")
 
-        results["pipeline_log"] = self.pipeline_log
         return results
 
     def _render_html(self, newsletter: dict) -> str:
         """Render the final newsletter content as an HTML email."""
-        practice_name = self.config.get("practice", {}).get("name", "Wellness Practice")
-        newsletter_name = self.config.get("newsletter", {}).get("name", "Newsletter")
+        practice = self.config.get("practice", {})
+        newsletter_cfg = self.config.get("newsletter", {})
+        practice_name = practice.get("name", "Wellness Practice")
+        practice_location = practice.get("location", "")
+        newsletter_name = newsletter_cfg.get("name", "Newsletter")
 
-        template = Template(HTML_TEMPLATE)
+        template_path = newsletter_cfg.get("template")
+        if template_path and os.path.exists(template_path):
+            with open(template_path, "r", encoding="utf-8") as f:
+                template = Template(f.read())
+        else:
+            template = Template(HTML_TEMPLATE)
+
+        def split_paragraphs(text: str) -> list:
+            if not text:
+                return []
+            return [p.strip() for p in text.replace("\r\n", "\n").split("\n\n") if p.strip()]
+
+        hero_paragraphs = split_paragraphs(newsletter.get("hero_topic", {}).get("body", ""))
+        spotlight_paragraphs = split_paragraphs(newsletter.get("practice_spotlight", {}).get("body", ""))
+
+        now = datetime.now()
+        issue_date = now.strftime("%A · %b %d, %Y")
+        total_words = sum(len(p.split()) for p in hero_paragraphs + spotlight_paragraphs)
+        total_words += sum(
+            len((t.get("body") or "").split()) + len((t.get("title") or "").split())
+            for t in newsletter.get("quick_tips", {}).get("tips", [])
+        )
+        read_time = max(1, round(total_words / 220))
+
+        words = re.split(r"\s+", practice_name.strip())
+        avatar_initials = "".join(w[0] for w in words[:2]).upper() or "VW"
+
+        hero_topic_headline = newsletter.get("hero_topic", {}).get("headline", "")
+        hero_eyebrow = newsletter_cfg.get("sections", [{}])[0].get("name", "This month").upper()
+
         return template.render(
             newsletter=newsletter,
             practice_name=practice_name,
+            practice_location=practice_location,
             newsletter_name=newsletter_name,
-            year=datetime.now().year,
+            wordmark=newsletter_cfg.get("wordmark", newsletter_name),
+            tagline=newsletter_cfg.get("tagline", ""),
+            footer_tagline=newsletter_cfg.get("footer_tagline", ""),
+            issue_number=newsletter_cfg.get("issue_number", now.strftime("%y.%m")),
+            issue_date=issue_date,
+            read_time=read_time,
+            avatar_initials=avatar_initials,
+            byline_subtitle=f"Reviewed by the {practice_name} clinical team",
+            hero_eyebrow=f"This month · {hero_eyebrow}",
+            hero_paragraphs=hero_paragraphs,
+            spotlight_paragraphs=spotlight_paragraphs,
+            year=now.year,
         )
 
 

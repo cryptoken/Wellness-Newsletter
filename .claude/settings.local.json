@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(pip install *)",
-      "Bash(python main.py)"
+      "Bash(python main.py)",
+      "Bash(python main.py --config config/radiance_medspa.yaml)",
+      "Bash(python -m pytest tests/test_pipeline.py::test_full_pipeline_produces_real_urls -v)"
     ]
   }
 }
