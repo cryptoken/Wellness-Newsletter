@@ -38,7 +38,7 @@ newsletter:
   name: "The Vitality Brief"
   wordmark: "Vitality"
   tagline: "A monthly letter for people in it for the long run."
-  footer_tagline: "Written by the clinicians and researchers at Vitality Wellness — for people who plan to be moving well at eighty."
+  footer_tagline: "Written by the clinicians and researchers at Vitality Wellness, for people who plan to be moving well at eighty."
   template: "templates/vitality_newsletter.html"
   frequency: monthly
   sections:

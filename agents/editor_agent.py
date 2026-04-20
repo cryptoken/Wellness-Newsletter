@@ -62,7 +62,7 @@ class EditorAgent:
         self.model = model
         self.name = "Editor Agent"
 
-    def run(self, newsletter_draft: dict, brand_config: dict) -> dict:
+    def run(self, newsletter_draft: dict, brand_config: dict, logger=None) -> dict:
         """
         Edit and score the newsletter draft.
 
@@ -97,6 +97,17 @@ Return ONLY the JSON."""
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_message}],
         )
+
+        if logger:
+            usage = getattr(response, "usage", None)
+            logger({
+                "stage": "llm_call",
+                "agent": self.name,
+                "model": getattr(response, "model", self.model),
+                "input_tokens": getattr(usage, "input_tokens", None) if usage else None,
+                "output_tokens": getattr(usage, "output_tokens", None) if usage else None,
+                "stop_reason": getattr(response, "stop_reason", None),
+            })
 
         raw_text = response.content[0].text.strip()
 

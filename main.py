@@ -61,6 +61,7 @@ Examples:
 
     args = parser.parse_args()
 
+    from theme import console
     try:
         results = run_pipeline(
             config=args.config,
@@ -69,9 +70,9 @@ Examples:
             output_dir=args.output,
             model=args.model,
         )
-        print(f"  ✓ Newsletter generated: {results['output_files']['html']}")
+        console.print(f"  [success]✓ Newsletter generated:[/success] [muted]{results['output_files']['html']}[/muted]")
     except Exception as e:
-        print(f"\n  x Pipeline failed: {e}")
+        console.print(f"\n  [error]✗ Pipeline failed:[/error] {e}")
         sys.exit(1)
 
 

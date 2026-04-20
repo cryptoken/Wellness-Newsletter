@@ -25,6 +25,8 @@ from anthropic import Anthropic
 from jinja2 import Template
 
 from agents import ResearchAgent, WriterAgent, EditorAgent
+import history
+from theme import console
 
 
 class NewsletterOrchestrator:
@@ -35,10 +37,10 @@ class NewsletterOrchestrator:
         self.model = model
         self.config = self._load_config(config_path)
 
-        # Initialize agents
+        # Tiered models: Sonnet for research + drafting, Opus for review/scoring
         self.research_agent = ResearchAgent(self.client, model=self.model)
         self.writer_agent = WriterAgent(self.client, model=self.model)
-        self.editor_agent = EditorAgent(self.client, model=self.model)
+        self.editor_agent = EditorAgent(self.client, model="claude-opus-4-7")
 
         # Pipeline state
         self.pipeline_log = []
@@ -49,7 +51,7 @@ class NewsletterOrchestrator:
             return yaml.safe_load(f)
 
     def _log(self, agent_name: str, status: str, detail: str = ""):
-        """Log a pipeline event."""
+        """Log a status event (backwards-compatible)."""
         entry = {
             "timestamp": datetime.now().isoformat(),
             "agent": agent_name,
@@ -57,7 +59,13 @@ class NewsletterOrchestrator:
             "detail": detail,
         }
         self.pipeline_log.append(entry)
-        print(f"  [{agent_name}] {status} {detail}")
+        style = "error" if status == "FAILED" else "muted"
+        console.print(f"  [muted][[/muted]{agent_name}[muted]][/muted] [{style}]{status}[/{style}] [muted]{detail}[/muted]")
+
+    def _log_event(self, event: dict):
+        """Structured logging for tool calls, LLM calls, and topic discovery."""
+        entry = {"timestamp": datetime.now().isoformat(), **event}
+        self.pipeline_log.append(entry)
 
     def run(self, month: str = None, topic: str = None, output_dir: str = "examples/output") -> dict:
         """
@@ -74,35 +82,48 @@ class NewsletterOrchestrator:
         if not month:
             month = datetime.now().strftime("%B %Y")
 
-        print(f"\n{'='*60}")
-        print(f"  NEWSLETTER PIPELINE — {self.config['newsletter']['name']}")
-        print(f"  Month: {month}")
-        print(f"{'='*60}\n")
+        console.rule(f"[stage]NEWSLETTER PIPELINE[/stage] [muted]—[/muted] [accent]{self.config['newsletter']['name']}[/accent] [muted]·[/muted] {month}")
 
-        results = {"month": month, "topic": topic}
+        practice_name = self.config.get("practice", {}).get("name", "unknown")
+        practice_slug = history.slugify(practice_name)
+        results = {"month": month, "topic": topic, "practice_slug": practice_slug}
 
         # ── Phase 1: Research ──────────────────────────────────────
-        print(">> Phase 1: Research")
+        console.print(f"\n[stage]🔍 Phase 1: Research[/stage] [muted]for {practice_name}[/muted]")
         self._log("Research Agent", "STARTED", f"Month: {month}, Topic: {topic or 'auto'}")
         try:
+            excluded = history.recent_topics(practice_slug)
+            last_seen = history.last_covered_at(practice_slug)
+            if excluded:
+                self._log("Research Agent", "MEMORY", f"Excluding {len(excluded)} recent topics: {excluded}")
+
             research_brief = self.research_agent.run(
                 brand_config=self.config,
                 month=month,
                 custom_topic=topic,
+                excluded_topics=excluded,
+                last_seen=last_seen,
+                logger=self._log_event,
             )
             results["research_brief"] = research_brief
-            self._log("Research Agent", "COMPLETED", f"Theme: {research_brief.get('month_theme', 'N/A')}")
+            trend_disc = research_brief.get("trend_discovery", {})
+            results["topic"] = trend_disc.get("winner") or topic
+            self._log("Research Agent", "COMPLETED",
+                      f"Theme: {research_brief.get('month_theme', 'N/A')} | "
+                      f"Winner: {results['topic']} (rank {trend_disc.get('winner_rank')}, "
+                      f"fallback={trend_disc.get('fallback_used', False)})")
         except Exception as e:
             self._log("Research Agent", "FAILED", str(e))
             raise
 
         # ── Phase 2: Write ─────────────────────────────────────────
-        print("\n>> Phase 2: Write")
+        console.print("\n[stage]✍️  Phase 2: Write[/stage]")
         self._log("Writer Agent", "STARTED")
         try:
             newsletter_draft = self.writer_agent.run(
                 research_brief=research_brief,
                 brand_config=self.config,
+                logger=self._log_event,
             )
             results["draft"] = newsletter_draft
             self._log("Writer Agent", "COMPLETED", f"Subject: {newsletter_draft.get('subject_line', 'N/A')}")
@@ -111,12 +132,13 @@ class NewsletterOrchestrator:
             raise
 
         # ── Phase 3: Edit ──────────────────────────────────────────
-        print("\n>> Phase 3: Edit")
+        console.print("\n[stage]📝 Phase 3: Edit[/stage]")
         self._log("Editor Agent", "STARTED")
         try:
             editor_output = self.editor_agent.run(
                 newsletter_draft=newsletter_draft,
                 brand_config=self.config,
+                logger=self._log_event,
             )
             results["editor_output"] = editor_output
             scorecard = editor_output.get("scorecard", {})
@@ -127,7 +149,7 @@ class NewsletterOrchestrator:
             raise
 
         # ── Phase 4: Render HTML ───────────────────────────────────
-        print("\n>> Phase 4: Render")
+        console.print("\n[stage]📮 Phase 4: Render[/stage]")
         self._log("Renderer", "STARTED")
         try:
             html_output = self._render_html(editor_output["edited_newsletter"])
@@ -143,6 +165,22 @@ class NewsletterOrchestrator:
 
             self._log("Renderer", "COMPLETED", f"Saved to {html_path}")
 
+            # Record successful run for topic memory (so next run excludes this topic)
+            trend_disc = results.get("research_brief", {}).get("trend_discovery", {})
+            recorded_topic = trend_disc.get("winner") or results.get("topic")
+            if recorded_topic:
+                ranking = trend_disc.get("ranking", [])
+                winner_rank = trend_disc.get("winner_rank") or 0
+                mean_interest = ranking[winner_rank].get("mean_interest", 0.0) if ranking and winner_rank < len(ranking) else 0.0
+                discovery_method = trend_disc.get("source", "pytrends")
+                history.record_run(
+                    practice_slug=practice_slug,
+                    topic=recorded_topic,
+                    discovery_method=discovery_method,
+                    mean_interest=mean_interest,
+                )
+                self._log("History", "RECORDED", f"{practice_slug} / {recorded_topic} ({discovery_method})")
+
             results["output_files"] = {"html": html_path}
             results["pipeline_log"] = self.pipeline_log
 
@@ -155,14 +193,11 @@ class NewsletterOrchestrator:
             raise
 
         # ── Summary ────────────────────────────────────────────────
-        print(f"\n{'='*60}")
-        print(f"  PIPELINE COMPLETE")
-        print(f"  Subject: {editor_output['edited_newsletter'].get('subject_line', 'N/A')}")
-        print(f"  Overall Score: {overall.get('score', 'N/A')}/10 — {overall.get('note', '')}")
-        print(f"  Changes Made: {len(editor_output.get('changes_made', []))}")
-        print(f"  Flags: {len(editor_output.get('flags', []))}")
-        print(f"  Output: {html_path}")
-        print(f"{'='*60}\n")
+        console.rule("[success]PIPELINE COMPLETE[/success]")
+        console.print(f"  [stage]Subject:[/stage] [accent]{editor_output['edited_newsletter'].get('subject_line', 'N/A')}[/accent]")
+        console.print(f"  [stage]Overall Score:[/stage] [success]{overall.get('score', 'N/A')}/10[/success] [muted]{overall.get('note', '')}[/muted]")
+        console.print(f"  [stage]Changes Made:[/stage] {len(editor_output.get('changes_made', []))}   [stage]Flags:[/stage] {len(editor_output.get('flags', []))}")
+        console.print(f"  [stage]Output:[/stage] [muted]{html_path}[/muted]\n")
 
         return results
 

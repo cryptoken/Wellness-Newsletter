@@ -63,7 +63,7 @@ class WriterAgent:
         self.model = model
         self.name = "Writer Agent"
 
-    def run(self, research_brief: dict, brand_config: dict) -> dict:
+    def run(self, research_brief: dict, brand_config: dict, logger=None) -> dict:
         """
         Write the newsletter draft from research and brand config.
 
@@ -103,6 +103,17 @@ Write the newsletter. Make it sound human. Return ONLY the JSON."""
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_message}],
         )
+
+        if logger:
+            usage = getattr(response, "usage", None)
+            logger({
+                "stage": "llm_call",
+                "agent": self.name,
+                "model": getattr(response, "model", self.model),
+                "input_tokens": getattr(usage, "input_tokens", None) if usage else None,
+                "output_tokens": getattr(usage, "output_tokens", None) if usage else None,
+                "stop_reason": getattr(response, "stop_reason", None),
+            })
 
         raw_text = response.content[0].text.strip()
 

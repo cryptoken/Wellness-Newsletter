@@ -13,9 +13,13 @@ Output: Structured research brief grounded in real-time data
 import json
 import os
 import re
+import sys
 import requests
 from anthropic import Anthropic
 from pytrends_modern import TrendReq
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from theme import console  # noqa: E402
 
 # ── Tool Definitions (Claude tool_use format) ─────────────────────────
 
@@ -213,13 +217,28 @@ def _normalize_service(service: str) -> str:
     return re.sub(r"\s+", " ", cleaned).strip().lower()
 
 
-def discover_trending_topic(services: list, timeframe: str = "today 3-m", geo: str = "US") -> dict:
+def discover_trending_topic(
+    services: list,
+    timeframe: str = "today 3-m",
+    geo: str = "US",
+    excluded_topics: list = None,
+    last_seen: dict = None,
+) -> dict:
     """
     Rank service keywords by mean Google Trends interest and return the winner.
 
-    Returns a dict with: winner, ranking, related_queries_top, related_queries_rising,
-    timeframe, geo. Interest scores are within-batch relative (0-100 per pytrends).
+    Args:
+        services: practice services (raw strings from config)
+        timeframe, geo: pytrends params
+        excluded_topics: normalized keywords to skip (recently covered for this practice)
+        last_seen: {topic: iso_timestamp} used for oldest-first recycling when all excluded
+
+    Returns dict with: winner, winner_rank, ranking, excluded_as_recent, fallback_used,
+    related_queries_top, related_queries_rising, timeframe, geo.
     """
+    excluded_set = set(excluded_topics or [])
+    last_seen = last_seen or {}
+
     keywords = [_normalize_service(s) for s in services if s][:5]
     if not keywords:
         return {"error": "no keywords to rank", "fallback": True}
@@ -236,12 +255,37 @@ def discover_trending_topic(services: list, timeframe: str = "today 3-m", geo: s
         ranking.append({"keyword": kw, "mean_interest": round(mean_score, 2)})
     ranking.sort(key=lambda r: r["mean_interest"], reverse=True)
 
-    winner = ranking[0]["keyword"]
+    winner = None
+    winner_rank = None
+    excluded_as_recent = []
+    fallback_used = False
+
+    for i, r in enumerate(ranking):
+        if r["keyword"] in excluded_set:
+            excluded_as_recent.append(r["keyword"])
+            continue
+        winner = r["keyword"]
+        winner_rank = i
+        break
+
+    if winner is None:
+        # Every candidate was recently covered — recycle the oldest one.
+        fallback_used = True
+        candidate_keywords = [r["keyword"] for r in ranking]
+        # Prefer a service that has no entry in last_seen at all (hypothetical); else oldest timestamp.
+        def age_key(kw):
+            return last_seen.get(kw) or ""
+        winner = sorted(candidate_keywords, key=age_key)[0]
+        winner_rank = next(i for i, r in enumerate(ranking) if r["keyword"] == winner)
+
     winner_related = trends.get("related_queries", {}).get(winner, {})
 
     return {
         "winner": winner,
+        "winner_rank": winner_rank,
         "ranking": ranking,
+        "excluded_as_recent": excluded_as_recent,
+        "fallback_used": fallback_used,
         "related_queries_top": winner_related.get("top", []),
         "related_queries_rising": winner_related.get("rising", []),
         "timeframe": timeframe,
@@ -263,7 +307,15 @@ class ResearchAgent:
         self.model = model
         self.name = "Research Agent"
 
-    def run(self, brand_config: dict, month: str = None, custom_topic: str = None) -> dict:
+    def run(
+        self,
+        brand_config: dict,
+        month: str = None,
+        custom_topic: str = None,
+        excluded_topics: list = None,
+        last_seen: dict = None,
+        logger=None,
+    ) -> dict:
         """
         Run the two-phase research pipeline.
 
@@ -271,6 +323,8 @@ class ResearchAgent:
             brand_config: The full brand voice configuration dict
             month: Optional month override (e.g., "January 2026")
             custom_topic: Optional user override — skips trend discovery
+            excluded_topics: Normalized keywords to skip (covered in recent runs)
+            last_seen: {topic: iso_timestamp} for oldest-first recycling fallback
 
         Returns:
             Structured research brief as a dict
@@ -278,24 +332,53 @@ class ResearchAgent:
         practice = brand_config.get("practice", {})
         voice = brand_config.get("voice", {})
         services = practice.get("services", [])
+        log = logger or (lambda event: None)
 
         # ── Phase 1: deterministic trend discovery ───────────────────
         if custom_topic:
-            print(f"    * topic override: {custom_topic!r} (skipping trend discovery)")
+            console.print(f"  [accent]→ topic override:[/accent] {custom_topic!r} [muted](skipping trend discovery)[/muted]")
             trend_context = {
                 "winner": custom_topic,
+                "winner_rank": None,
                 "ranking": [],
+                "excluded_as_recent": [],
+                "fallback_used": False,
                 "related_queries_top": [],
                 "related_queries_rising": [],
                 "source": "user_override",
             }
         else:
-            trend_context = discover_trending_topic(services)
-            if trend_context.get("fallback"):
-                print(f"    ! trend discovery fallback: {trend_context.get('error')}")
+            trend_context = discover_trending_topic(
+                services,
+                excluded_topics=excluded_topics,
+                last_seen=last_seen,
+            )
+            if trend_context.get("fallback") and "error" in trend_context:
+                console.print(f"  [error]! trend discovery fallback:[/error] {trend_context.get('error')}")
             else:
-                print(f"    * winning topic: {trend_context['winner']!r} "
-                      f"(mean interest {trend_context['ranking'][0]['mean_interest']})")
+                winner = trend_context["winner"]
+                rank = trend_context["winner_rank"]
+                mean_int = trend_context["ranking"][rank]["mean_interest"]
+                extra = ""
+                if trend_context.get("excluded_as_recent"):
+                    extra = f" [muted](excluded recent: {trend_context['excluded_as_recent']})[/muted]"
+                if trend_context.get("fallback_used"):
+                    extra += " [accent][recycling oldest][/accent]"
+                console.print(
+                    f"  [success]✓ Winner:[/success] [accent]{winner}[/accent] "
+                    f"[muted](rank {rank}, interest {mean_int})[/muted]{extra}"
+                )
+
+        log({
+            "stage": "topic_discovery",
+            "agent": self.name,
+            "candidates": [r["keyword"] for r in trend_context.get("ranking", [])],
+            "winner": trend_context.get("winner"),
+            "winner_rank": trend_context.get("winner_rank"),
+            "excluded_as_recent": trend_context.get("excluded_as_recent", []),
+            "fallback_used": trend_context.get("fallback_used", False),
+            "source": trend_context.get("source", "pytrends"),
+        })
 
         winner = trend_context["winner"]
         related_top = trend_context.get("related_queries_top", [])[:10]
@@ -334,7 +417,7 @@ Start by calling firecrawl_search on the WINNING TOPIC."""
 
         # Agentic tool-use loop
         max_iterations = 10
-        for _ in range(max_iterations):
+        for iteration in range(max_iterations):
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=3000,
@@ -343,9 +426,19 @@ Start by calling firecrawl_search on the WINNING TOPIC."""
                 messages=messages,
             )
 
+            usage = getattr(response, "usage", None)
+            log({
+                "stage": "llm_call",
+                "agent": self.name,
+                "iteration": iteration,
+                "model": getattr(response, "model", self.model),
+                "input_tokens": getattr(usage, "input_tokens", None) if usage else None,
+                "output_tokens": getattr(usage, "output_tokens", None) if usage else None,
+                "stop_reason": getattr(response, "stop_reason", None),
+            })
+
             # Check if we're done (no more tool calls)
             if response.stop_reason == "end_turn":
-                # Extract the final text response
                 for block in response.content:
                     if hasattr(block, "text"):
                         brief = self._parse_json(block.text)
@@ -362,21 +455,30 @@ Start by calling firecrawl_search on the WINNING TOPIC."""
                     tool_input = block.input
                     tool_id = block.id
 
-                    print(f"    → {tool_name}({json.dumps(tool_input, indent=None)[:80]}...)")
+                    input_summary = json.dumps(tool_input, indent=None)[:120]
+                    query_preview = tool_input.get("query", "")[:60] if isinstance(tool_input, dict) else input_summary
+                    console.print(f"  [tool]→ {tool_name}:[/tool] [muted]{query_preview}[/muted]")
 
-                    # Execute the tool
                     if tool_name in TOOL_DISPATCH:
                         result = TOOL_DISPATCH[tool_name](tool_input)
                     else:
                         result = {"error": f"Unknown tool: {tool_name}"}
 
+                    serialized = json.dumps(result, default=str)
+                    log({
+                        "stage": "tool_call",
+                        "agent": self.name,
+                        "tool": tool_name,
+                        "input_summary": input_summary,
+                        "output_bytes": len(serialized),
+                    })
+
                     tool_results.append({
                         "type": "tool_result",
                         "tool_use_id": tool_id,
-                        "content": json.dumps(result, default=str),
+                        "content": serialized,
                     })
 
-            # Add assistant message and tool results to conversation
             messages.append({"role": "assistant", "content": assistant_content})
             messages.append({"role": "user", "content": tool_results})
 

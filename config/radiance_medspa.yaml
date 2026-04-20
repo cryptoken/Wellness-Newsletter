@@ -35,6 +35,10 @@ voice:
 
 newsletter:
   name: "The Radiance Memo"
+  wordmark: "RADIANCE"
+  tagline: "Med Spa Journal"
+  footer_tagline: "Refined aesthetic care for clients who treat their skin like an investment."
+  template: "templates/radiance_medspa_newsletter.html"
   frequency: monthly
   sections:
     - slug: hero_topic

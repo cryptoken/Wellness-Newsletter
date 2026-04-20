@@ -13,3 +13,6 @@ agents/output/
 examples/output/
 *.html
 *.pdf
+
+# Topic memory database
+data/
